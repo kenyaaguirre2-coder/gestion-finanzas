@@ -1,0 +1,64 @@
+using GestionFinanzas.Models;
+using Microsoft.AspNetCore.Mvc;
+
+namespace GestionFinanzas.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class TransaccionesController : ControllerBase
+{
+    private static List<Transaccion> transacciones = new List<Transaccion>
+    {
+        new Transaccion { Id = 1, Tipo = "Ingreso", Categoria = "Salario", Monto = 15000, Descripcion = "Salario mensual", Fecha = DateTime.Now },
+        new Transaccion { Id = 2, Tipo = "Gasto", Categoria = "Alimentación", Monto = 2500, Descripcion = "Supermercado", Fecha = DateTime.Now }
+    };
+
+    [HttpGet]
+    public ActionResult<IEnumerable<Transaccion>> Get()
+    {
+        return Ok(transacciones);
+    }
+
+    [HttpGet("{id}")]
+    public ActionResult<Transaccion> Get(int id)
+    {
+        var transaccion = transacciones.FirstOrDefault(t => t.Id == id);
+        if (transaccion == null)
+            return NotFound();
+        return Ok(transaccion);
+    }
+
+    [HttpPost]
+    public ActionResult<Transaccion> Post([FromBody] Transaccion transaccion)
+    {
+        transaccion.Id = transacciones.Max(t => t.Id) + 1;
+        transacciones.Add(transaccion);
+        return CreatedAtAction(nameof(Get), new { id = transaccion.Id }, transaccion);
+    }
+
+    [HttpPut("{id}")]
+    public IActionResult Put(int id, [FromBody] Transaccion transaccion)
+    {
+        var existing = transacciones.FirstOrDefault(t => t.Id == id);
+        if (existing == null)
+            return NotFound();
+        
+        existing.Tipo = transaccion.Tipo;
+        existing.Categoria = transaccion.Categoria;
+        existing.Monto = transaccion.Monto;
+        existing.Descripcion = transaccion.Descripcion;
+        
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public IActionResult Delete(int id)
+    {
+        var transaccion = transacciones.FirstOrDefault(t => t.Id == id);
+        if (transaccion == null)
+            return NotFound();
+        
+        transacciones.Remove(transaccion);
+        return NoContent();
+    }
+}
