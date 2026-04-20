@@ -36,7 +36,7 @@ const Dashboard = () => {
 
     const fetchTransacciones = async () => {
         try {
-            const response = await axios.get('http://localhost:5000/api/transacciones');
+            const response = await axios.get('http://localhost:5007/api/transacciones');
             setTransacciones(response.data);
             setLoading(false);
         } catch (error) {
