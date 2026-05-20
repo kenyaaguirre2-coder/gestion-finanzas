@@ -1,19 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Card from '../components/shared/Card';
 import Button from '../components/shared/Button';
 
+const API_URL = 'http://localhost:5007/api/transacciones';
+
 const Ingresos = () => {
-    const [ingresos, setIngresos] = useState([
-        { id: 1, categoria: 'Salario', monto: 15000, descripcion: 'Salario mensual', fecha: '2026-02-01' },
-        { id: 2, categoria: 'Freelance', monto: 3000, descripcion: 'Proyecto web', fecha: '2026-02-05' }
-    ]);
+    const [ingresos, setIngresos] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const [formData, setFormData] = useState({
+        tipo: 'Ingreso',
         categoria: '',
         monto: '',
         descripcion: '',
-        fecha: ''
+        fecha: new Date().toISOString().split('T')[0]
     });
+
+    // Cargar ingresos al iniciar
+    useEffect(() => {
+        cargarIngresos();
+    }, []);
+
+    const cargarIngresos = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(API_URL);
+            // Filtrar solo ingresos
+            const soloIngresos = response.data.filter(t => t.tipo === 'Ingreso');
+            setIngresos(soloIngresos);
+            setError('');
+        } catch (err) {
+            setError('Error al cargar los ingresos');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleInputChange = (e) => {
         setFormData({
@@ -22,28 +47,64 @@ const Ingresos = () => {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const nuevoIngreso = {
-            id: ingresos.length + 1,
-            ...formData,
-            monto: parseFloat(formData.monto)
-        };
-        setIngresos([...ingresos, nuevoIngreso]);
-        setFormData({ categoria: '', monto: '', descripcion: '', fecha: '' });
+        setError('');
+        setSuccess('');
+
+        try {
+            const response = await axios.post(API_URL, {
+                tipo: 'Ingreso',
+                categoria: formData.categoria,
+                monto: parseFloat(formData.monto),
+                descripcion: formData.descripcion,
+                fecha: formData.fecha
+            });
+
+            setSuccess('¡Ingreso registrado exitosamente!');
+            setFormData({
+                tipo: 'Ingreso',
+                categoria: '',
+                monto: '',
+                descripcion: '',
+                fecha: new Date().toISOString().split('T')[0]
+            });
+            cargarIngresos(); // Recargar la lista
+        } catch (err) {
+            setError(err.response?.data?.message || 'Error al registrar ingreso');
+            console.error(err);
+        }
     };
+
+    const eliminarIngreso = async (id) => {
+        if (window.confirm('¿Estás seguro de eliminar este ingreso?')) {
+            try {
+                await axios.delete(`${API_URL}/${id}`);
+                setSuccess('Ingreso eliminado correctamente');
+                cargarIngresos();
+            } catch (err) {
+                setError('Error al eliminar el ingreso');
+                console.error(err);
+            }
+        }
+    };
+
+    if (loading) return <div>Cargando...</div>;
 
     return (
         <div>
             <h2 style={{ marginBottom: '20px' }}>Registro de Ingresos</h2>
-            
+
+            {error && <div style={{ color: 'red', padding: '10px', marginBottom: '10px', backgroundColor: '#ffe6e6', borderRadius: '5px' }}>{error}</div>}
+            {success && <div style={{ color: 'green', padding: '10px', marginBottom: '10px', backgroundColor: '#e6ffe6', borderRadius: '5px' }}>{success}</div>}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
                 {/* Formulario */}
                 <Card title="Agregar Nuevo Ingreso">
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
                             <label>Categoría</label>
-                            <select 
+                            <select
                                 className="form-control"
                                 name="categoria"
                                 value={formData.categoria}
@@ -66,7 +127,7 @@ const Ingresos = () => {
                                 name="monto"
                                 value={formData.monto}
                                 onChange={handleInputChange}
-                                min="0"
+                                min="0.01"
                                 step="0.01"
                                 required
                             />
@@ -110,17 +171,28 @@ const Ingresos = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {ingresos.map(ingreso => (
-                                <tr key={ingreso.id}>
-                                    <td>{ingreso.fecha}</td>
-                                    <td>{ingreso.categoria}</td>
-                                    <td>{ingreso.descripcion}</td>
-                                    <td>${ingreso.monto.toFixed(2)}</td>
-                                    <td>
-                                        <Button variant="danger" size="small">Eliminar</Button>
-                                    </td>
+                            {ingresos.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" style={{ textAlign: 'center' }}>No hay ingresos registrados</td>
                                 </tr>
-                            ))}
+                            ) : (
+                                ingresos.map(ingreso => (
+                                    <tr key={ingreso.id}>
+                                        <td>{new Date(ingreso.fecha).toLocaleDateString()}</td>
+                                        <td>{ingreso.categoria}</td>
+                                        <td>{ingreso.descripcion}</td>
+                                        <td>${ingreso.monto.toFixed(2)}</td>
+                                        <td>
+                                            <button
+                                                onClick={() => eliminarIngreso(ingreso.id)}
+                                                style={{ background: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}
+                                            >
+                                                🗑️ Eliminar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </Card>
